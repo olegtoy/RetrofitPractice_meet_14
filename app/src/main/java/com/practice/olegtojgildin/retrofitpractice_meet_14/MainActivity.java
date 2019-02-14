@@ -19,6 +19,7 @@ import com.practice.olegtojgildin.retrofitpractice_meet_14.Network.RetrofitHelpe
 import com.practice.olegtojgildin.retrofitpractice_meet_14.RecyclerForecast.WeatherAdapter;
 import com.practice.olegtojgildin.retrofitpractice_meet_14.model.WeatherDay;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements WeatherAdapter.OnWeatherListener {
@@ -34,7 +35,7 @@ public class MainActivity extends AppCompatActivity implements WeatherAdapter.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         bindService();
-        //new MainActivity.AsyncTaskForecast().execute("Moscow");
+
     }
 
     @Override
@@ -89,22 +90,31 @@ public class MainActivity extends AppCompatActivity implements WeatherAdapter.On
         unbindService(mServiceConnection);
     }
 
-    public class AsyncTaskForecast extends AsyncTask<String, Void, List<WeatherDay>> {
+    public  class AsyncTaskForecast extends AsyncTask<String, Void, List<WeatherDay>> {
+        private boolean forecastFromDB=false;
         @Override
         protected List<WeatherDay> doInBackground(String... strings) {
             ApiMapper mApiMapper = new ApiMapper(new RetrofitHelper());
-            // return mApiMapper.forecastAsync(strings[0],getApplicationContext());
-            return mApiMapper.forecastSync(strings[0], getApplicationContext());
+            List<WeatherDay> forecastList = mApiMapper.getForecastWeatherSync(strings[0], getApplicationContext());
+            if (forecastList != null)
+                return forecastList;
+            else {
+                Log.d("frombd", "dfsdf");
+                DBManager dbManager = DBManager.getInstance(MainActivity.this);
+                forecastFromDB=true;
+                return dbManager.getAllWeatherDay();
+            }
         }
 
         @Override
         protected void onPostExecute(List<WeatherDay> weatherDays) {
             mListForecast = weatherDays;
             Log.d("size", Integer.toString(mListForecast.size()));
-            DBManager dbManager = new DBManager(MainActivity.this);
-            dbManager.removeTable();
-            for (int i = 0; i < weatherDays.size(); i++) {
-                dbManager.addWeather(weatherDays.get(i));
+            if(!forecastFromDB){
+                DBManager dbManager = DBManager.getInstance(MainActivity.this);
+                dbManager.removeForecasts();
+                for (int i = 0; i < weatherDays.size(); i++)
+                    dbManager.addWeather(weatherDays.get(i));
             }
             initViews();
         }

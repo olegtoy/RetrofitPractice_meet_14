@@ -10,16 +10,24 @@ import com.practice.olegtojgildin.retrofitpractice_meet_14.model.WeatherForecast
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import static android.content.ContentValues.TAG;
 
 /**
  * Created by olegtojgildin on 01/02/2019.
  */
 
 public class ApiMapper {
+    public static final String API_KEY="acf993bf91158e1b964db7d30554fc95";
+    public static final String LANG="ru";
+    public static final String UNITS="mtric";
+    public static final String MODE="json";
+
     private RetrofitHelper helper;
     private List<WeatherDay> mListWeather;
 
@@ -28,36 +36,45 @@ public class ApiMapper {
         mListWeather = new ArrayList<>();
     }
 
-    public List<WeatherDay> forecastAsync(String country) {
-        helper.getService().getForecast(country, "json", "metric", "ru", "acf993bf91158e1b964db7d30554fc95").enqueue(new Callback<WeatherForecast>() {
-            @Override
-            public void onResponse(Call<WeatherForecast> call, Response<WeatherForecast> response) {
-                mListWeather = response.body().getItems();
-            }
+    private static volatile ApiMapper INSTANCE;
 
-            @Override
-            public void onFailure(Call<WeatherForecast> call, Throwable t) {
-                Log.d("ApiMapperFailure", t.getMessage());
+    public static ApiMapper getInstance(final RetrofitHelper helper) {
+        ApiMapper instance = INSTANCE;
+        if (instance == null) {
+            synchronized (ApiMapper.class) {
+                instance = INSTANCE;
+                if (instance == null) {
+                    instance = INSTANCE = new ApiMapper(helper);
+                }
             }
-        });
-        return mListWeather;
+        }
+        return instance;
     }
 
-    public List<WeatherDay> forecastSync(String country, final Context context) {
+
+    public List<WeatherDay> getForecastWeatherSync(String country, final Context context) {
         Response<WeatherForecast> response = null;
         try {
-            response = helper.getService().getForecast(country, "json", "metric", "ru", "acf993bf91158e1b964db7d30554fc95").execute();
+            response = helper.getService().getForecast(country, MODE, UNITS, LANG, API_KEY).execute();
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (response == null) {
+ /*       if (response == null) {
             Log.d("frombd", "dfsdf");
             DBManager dbManager = new DBManager(context);
             return dbManager.getAllWeatherDay();
         }
+*/
 
-        return response.body().getItems();
+        if (response != null) {
+            if (response.isSuccessful()) {
+                return response.body().getItems();
+            } else {
+                Log.e("ApiMapper", response.code() + " " + response.message());
+            }
+        }
+        return null;
     }
 
 
